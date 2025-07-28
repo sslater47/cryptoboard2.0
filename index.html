@@ -9,6 +9,9 @@
 </head>
 <body class="bg-gray-100 p-4">
   <h1 class="text-3xl font-bold mb-4 text-center">AI Crypto Analyst Dashboard</h1>
+  <div class="flex justify-center mb-4">
+    <button id="refreshBtn" class="bg-blue-500 text-white px-4 py-2 rounded">Refresh</button>
+  </div>
   <div id="tracker" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
 
   <script>
@@ -20,6 +23,7 @@
       { id: 'cardano', symbol: 'ADA', name: 'Cardano' },
       { id: 'hedera-hashgraph', symbol: 'HBAR', name: 'Hedera' },
     ];
+    const charts = {};
 
     async function fetchData() {
       const ids = coins.map(c => c.id).join('%2C');
@@ -27,6 +31,23 @@
       const res = await fetch(url);
       const data = await res.json();
       render(data);
+    }
+
+    function computePredictions(current, changePct) {
+      const preds = [];
+      for (let h = 1; h <= 24; h++) {
+        const p = current * (1 + (changePct / 100) * (h / 24));
+        preds.push(p.toFixed(4));
+      }
+      return preds;
+    }
+
+    function computeFearGreed(changePct) {
+      const fg = Math.max(0, Math.min(100, 50 + changePct * 2));
+      let label = 'Neutral';
+      if (fg < 40) label = 'Fear';
+      else if (fg > 60) label = 'Greed';
+      return { value: fg.toFixed(0), label };
     }
 
     function render(data) {
@@ -37,6 +58,10 @@
         card.className = 'bg-white shadow p-4 rounded';
         const price = info.current_price.toFixed(4);
         const change = info.price_change_percentage_24h.toFixed(2);
+        const preds = computePredictions(info.current_price, info.price_change_percentage_24h);
+        const fg = computeFearGreed(info.price_change_percentage_24h);
+        const action = change >= 0 ? 'Consider Buying' : 'Consider Selling';
+        const predHTML = preds.map((p,i)=>`<div>${i+1}h: $${p}</div>`).join('');
         card.innerHTML = `
           <h2 class="text-xl font-semibold mb-2 flex items-center">
             <img src="${info.image}" alt="${info.symbol}" class="w-6 h-6 mr-2"/>
@@ -45,25 +70,38 @@
           <p>Price: $${price}</p>
           <p>Market Cap: $${Number(info.market_cap).toLocaleString()}</p>
           <p class="${change >= 0 ? 'text-green-600' : 'text-red-600'}">24h Change: ${change}%</p>
-          <canvas id="chart-${info.id}" height="100"></canvas>
-          <p class="mt-2 text-sm">Mock prediction: ${mockPredict(price)}</p>
+          <p>Action: ${action}</p>
+          <p>Fear/Greed Index: ${fg.value} (${fg.label})</p>
+          <div class="grid grid-cols-3 gap-1 text-xs mt-2">${predHTML}</div>
+          <canvas id="chart-${info.id}" height="100" class="mt-2"></canvas>
         `;
         container.appendChild(card);
         const ctx = document.getElementById(`chart-${info.id}`).getContext('2d');
-        new Chart(ctx, {
-          type: 'line',
-          data: {
-            labels: info.sparkline_in_7d.price.map((_, i) => i),
-            datasets: [{
-              label: '7d Price',
-              data: info.sparkline_in_7d.price,
-              fill: false,
-              borderColor: 'rgb(75, 192, 192)',
-              tension: 0.1
-            }]
-          },
-          options: { scales: { x: { display: false } } }
-        });
+        if (!charts[info.id]) {
+          charts[info.id] = new Chart(ctx, {
+            type: 'line',
+            data: {
+              labels: info.sparkline_in_7d.price.map((_, i) => i),
+              datasets: [{
+                label: 'Live Price',
+                data: info.sparkline_in_7d.price,
+                fill: false,
+                borderColor: 'rgb(75, 192, 192)',
+                tension: 0.1
+              }]
+            },
+            options: { scales: { x: { display: false } } }
+          });
+        } else {
+          const chart = charts[info.id];
+          chart.data.labels.push(chart.data.labels.length);
+          chart.data.datasets[0].data.push(info.current_price);
+          if (chart.data.datasets[0].data.length > 120) {
+            chart.data.labels.shift();
+            chart.data.datasets[0].data.shift();
+          }
+          chart.update();
+        }
       });
     }
 
@@ -73,6 +111,7 @@
       return `$${nextDay} in 24h (not financial advice)`;
     }
 
+    document.getElementById('refreshBtn').addEventListener('click', fetchData);
     fetchData();
     setInterval(fetchData, 60000); // refresh every minute
   </script>
