@@ -3,24 +3,78 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>My Blank Page</title>
-  <style>
-    body {
-      margin: 0;
-      padding: 0;
-      font-family: sans-serif;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-      background-color: #f0f0f0;
-    }
-    h1 {
-      color: #888;
-    }
-  </style>
+  <title>AI Crypto Analyst Dashboard</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
-<body>
-  <h1>This is a blank page 👋🏻</h1>
+<body class="bg-gray-100 p-4">
+  <h1 class="text-3xl font-bold mb-4 text-center">AI Crypto Analyst Dashboard</h1>
+  <div id="tracker" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+
+  <script>
+    const coins = [
+      { id: 'crypto-com-chain', symbol: 'CRO', name: 'Cronos' },
+      { id: 'bitcoin', symbol: 'BTC', name: 'Bitcoin' },
+      { id: 'ripple', symbol: 'XRP', name: 'XRP' },
+      { id: 'ethereum', symbol: 'ETH', name: 'Ethereum' },
+      { id: 'cardano', symbol: 'ADA', name: 'Cardano' },
+      { id: 'hedera-hashgraph', symbol: 'HBAR', name: 'Hedera' },
+    ];
+
+    async function fetchData() {
+      const ids = coins.map(c => c.id).join('%2C');
+      const url = `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${ids}&sparkline=true`;
+      const res = await fetch(url);
+      const data = await res.json();
+      render(data);
+    }
+
+    function render(data) {
+      const container = document.getElementById('tracker');
+      container.innerHTML = '';
+      data.forEach(info => {
+        const card = document.createElement('div');
+        card.className = 'bg-white shadow p-4 rounded';
+        const price = info.current_price.toFixed(4);
+        const change = info.price_change_percentage_24h.toFixed(2);
+        card.innerHTML = `
+          <h2 class="text-xl font-semibold mb-2 flex items-center">
+            <img src="${info.image}" alt="${info.symbol}" class="w-6 h-6 mr-2"/>
+            ${info.name} (${info.symbol.toUpperCase()})
+          </h2>
+          <p>Price: $${price}</p>
+          <p>Market Cap: $${Number(info.market_cap).toLocaleString()}</p>
+          <p class="${change >= 0 ? 'text-green-600' : 'text-red-600'}">24h Change: ${change}%</p>
+          <canvas id="chart-${info.id}" height="100"></canvas>
+          <p class="mt-2 text-sm">Mock prediction: ${mockPredict(price)}</p>
+        `;
+        container.appendChild(card);
+        const ctx = document.getElementById(`chart-${info.id}`).getContext('2d');
+        new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: info.sparkline_in_7d.price.map((_, i) => i),
+            datasets: [{
+              label: '7d Price',
+              data: info.sparkline_in_7d.price,
+              fill: false,
+              borderColor: 'rgb(75, 192, 192)',
+              tension: 0.1
+            }]
+          },
+          options: { scales: { x: { display: false } } }
+        });
+      });
+    }
+
+    function mockPredict(price) {
+      const p = parseFloat(price);
+      const nextDay = (p * (1 + (Math.random() - 0.5) / 20)).toFixed(4);
+      return `$${nextDay} in 24h (not financial advice)`;
+    }
+
+    fetchData();
+    setInterval(fetchData, 60000); // refresh every minute
+  </script>
 </body>
 </html>
