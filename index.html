@@ -75,12 +75,12 @@
       const fng = await fetchFearGreed();
 
       for (const coin of coins) {
-        const [hour, week, all] = await Promise.all([
+        const [hour, week, month] = await Promise.all([
           fetchHistoricalData(coin.id, 1),
           fetchHistoricalData(coin.id, 7),
-          fetchHistoricalData(coin.id, 'max')
+          fetchHistoricalData(coin.id, 30)
         ]);
-        rangesData[coin.id] = { hour, week, all };
+        rangesData[coin.id] = { hour, week, month };
       }
 
       render(data, fng);
@@ -115,7 +115,7 @@
           <select id="range-${info.id}" class="mb-2 border rounded p-1">
             <option value="hour">Hourly</option>
             <option value="week">Weekly</option>
-            <option value="all">All Time</option>
+            <option value="month">Monthly</option>
           </select>
           <canvas id="chart-${info.id}" height="100"></canvas>
           <div class="overflow-y-auto h-32 mt-2">
