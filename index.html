@@ -88,6 +88,9 @@
 
     function render(data, fearGreed) {
       const container = document.getElementById('tracker');
+      // Destroy existing charts to avoid referencing removed canvases
+      Object.values(charts).forEach(c => c.destroy());
+      for (const key in charts) delete charts[key];
       container.innerHTML = '';
       data.forEach(info => {
         const card = document.createElement('div');
