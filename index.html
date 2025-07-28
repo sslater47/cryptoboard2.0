@@ -44,20 +44,25 @@
       return data.prices.map(p => p[1]);
     }
 
-    function generatePredictions(current) {
-      const predictions = [];
-      let price = parseFloat(current);
-      const now = new Date();
-      for (let i = 1; i <= 24; i++) {
-        price = price * (1 + (Math.random() - 0.5) / 50); // +/-1%
-        const t = new Date(now.getTime() + i * 3600 * 1000);
-        predictions.push({
-          time: t.toLocaleString('en-US', { timeZone: 'America/Los_Angeles', hour: 'numeric', hour12: false }),
-          price
-        });
+      function generatePredictions(current) {
+        const predictions = [];
+        let price = parseFloat(current);
+        const now = new Date();
+        for (let i = 5; i <= 15; i++) {
+          price = price * (1 + (Math.random() - 0.5) / 200); // +/-0.25%
+          const t = new Date(now.getTime() + i * 60 * 1000);
+          predictions.push({
+            time: t.toLocaleString('en-US', {
+              timeZone: 'America/Los_Angeles',
+              hour: 'numeric',
+              minute: '2-digit',
+              hour12: false
+            }),
+            price
+          });
+        }
+        return predictions;
       }
-      return predictions;
-    }
 
     function advise(current, predictions) {
       const c = parseFloat(current);
@@ -120,7 +125,7 @@
           <canvas id="chart-${info.id}" height="100"></canvas>
           <div class="overflow-y-auto h-32 mt-2">
             <table class="text-sm w-full">
-              <thead><tr><th class="text-left">PST Hr</th><th class="text-left">Predicted</th></tr></thead>
+              <thead><tr><th class="text-left">PST Time</th><th class="text-left">Predicted</th></tr></thead>
               <tbody>${rows}</tbody>
             </table>
           </div>
