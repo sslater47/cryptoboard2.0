@@ -38,10 +38,15 @@
     }
 
     async function fetchHistoricalData(id, days) {
-      const url = `https://api.coingecko.com/api/v3/coins/${id}/market_chart?vs_currency=usd&days=${days}`;
-      const res = await fetch(url);
-      const data = await res.json();
-      return data.prices.map(p => p[1]);
+      try {
+        const url = `https://api.coingecko.com/api/v3/coins/${id}/market_chart?vs_currency=usd&days=${days}`;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('Request failed');
+        const data = await res.json();
+        return data.prices.map(p => p[1]);
+      } catch (e) {
+        return [];
+      }
     }
 
       function generatePredictions(current) {
@@ -79,14 +84,16 @@
       const data = await res.json();
       const fng = await fetchFearGreed();
 
-      for (const coin of coins) {
-        const [hour, week, month] = await Promise.all([
-          fetchHistoricalData(coin.id, 1),
-          fetchHistoricalData(coin.id, 7),
-          fetchHistoricalData(coin.id, 30)
-        ]);
-        rangesData[coin.id] = { hour, week, month };
-      }
+      await Promise.all(
+        coins.map(async coin => {
+          const [hour, week, month] = await Promise.all([
+            fetchHistoricalData(coin.id, 1),
+            fetchHistoricalData(coin.id, 7),
+            fetchHistoricalData(coin.id, 30)
+          ]);
+          rangesData[coin.id] = { hour, week, month };
+        })
+      );
 
       render(data, fng);
     }
